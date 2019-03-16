@@ -20,7 +20,7 @@ COMMAND_FLAG=0
 filename=
 
 function usage () {
-  echo "$HOW_TO_INFO" >&2
+  echo "$0: Priklad spustenia: $HOW_TO_INFO" >&2
 	exit 1
 }
 
@@ -28,12 +28,11 @@ function print_dom () {
   while read -r line; do
     host $line | awk '{print $5}' | {
       read tested_line
-
       if [ "$tested_line" = "2(SERVFAIL)" ]; then
         echo $line
       elif [ "$tested_line" = "3(NXDOMAIN)" ]; then
         echo $line
-      else echo $tested_line
+      else echo $tested_line | sed 's/.$//'
       fi
     }
     done
@@ -275,6 +274,10 @@ function hist_edit () {
   done
 }
 
+function filter_all () {
+  filter_ip_addr | filter_before_date | filter_uri | filter_after_date
+}
+
 # Getting values of filters
 while getopts "a:b:i:u:" arg; do
   ((ind_arg=$OPTIND-1))
@@ -353,13 +356,11 @@ while [ "$1" != "" ]; do
 
     # Case when file does not exist
     if [ ! -f $filename ]; then
-      echo "$0: File '$filename' does not exist." >&2
-	    exit 1
+      usage
     fi
 
     if [ ! -r $filename ]; then
-      echo "$0: File '$filename' is not readable." >&2
-      exit 1
+      usage
     fi
 
     if [ $COMMAND_FLAG -eq 0 ]; then
@@ -373,45 +374,50 @@ while [ "$1" != "" ]; do
       fi
 
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date
+        gunzip -c $filename | filter_all
       else
-        cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date
+        cat $filename | filter_all
       fi
     fi
 
     if [ $LIST_IP_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $1}'
+        gunzip -c $filename | filter_all | awk '{print $1}'
+      else
+        cat $filename | filter_all | awk '{print $1}'
       fi
-      cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $1}'
     fi
 
     if [ $LIST_HOSTS_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $1}' | print_dom
+        gunzip -c $filename | filter_all | awk '{print $1}' | print_dom
+      else
+        cat $filename | filter_all | awk '{print $1}' | print_dom
       fi
-      cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $1}' | print_dom
     fi
 
     if [ $LIST_URI_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $7}' | list_uri_edit
+        gunzip -c $filename | filter_all | awk '{print $7}' | list_uri_edit
+      else
+        cat $filename | filter_all | awk '{print $7}' | list_uri_edit
       fi
-      cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $7}' | list_uri_edit
     fi
 
     if [ $HIST_IP_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
+        gunzip -c $filename | filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
+      else
+        cat $filename | filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
       fi
-      cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
     fi
 
     if [  $HIST_LOAD_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | hist_load_creator | sort | uniq -c | hist_edit
+        gunzip -c $filename | filter_all | filter_after_date | hist_load_creator | sort | uniq -c | hist_edit
+      else
+        cat $filename | filter_all | hist_load_creator | sort | uniq -c | hist_edit
       fi
-      cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | hist_load_creator | sort | uniq -c | hist_edit
     fi
     shift
 done
