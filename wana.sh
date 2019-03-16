@@ -234,13 +234,45 @@ function hist_ip_creator () {
         read act_ip
         printf "%s (%d): %s\n" "$act_ip" "$nmbs" "$hash_nmb"
       }
-  }
+    }
   done
   }
 }
 
 function hist_load_creator () {
-  awk '{print $4}' | sort | uniq -c
+  awk '{print $4}' | {
+    while read -r line; do
+      echo ${line:1:14}
+    done
+  }
+}
+
+function hist_edit () {
+  while read -r line; do
+    echo $line | awk '{printf $1}' | {
+
+      read nmbs
+      hash_nmb=
+      for (( i = 0; i < $nmbs; i++ )); do
+        hash_nmb+="#"
+      done
+      echo $line | awk '{print $2}' | {
+        read act_date
+        temp_date=$act_date
+        act_date=${temp_date:7:4}
+        month=${temp_date:3:3}
+        month_edit
+        act_date+="-"
+        act_date+=$MON
+        act_date+="-"
+        act_date+=${temp_date:0:2}
+        act_date+=" "
+        act_date+=${temp_date:12:2}
+        act_date+=":00"
+        printf "%s (%d): %s\n" "$act_date" "$nmbs" "$hash_nmb"
+      }
+    }
+  done
 }
 
 # Getting values of filters
@@ -376,7 +408,10 @@ while [ "$1" != "" ]; do
     fi
 
     if [  $HIST_LOAD_FLAG -eq 1 ]; then
-      cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | hist_load_creator
+      if [ ${filename: -3} == ".gz" ]; then
+        gunzip -c $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | hist_load_creator | sort | uniq -c | hist_edit
+      fi
+      cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | hist_load_creator | sort | uniq -c | hist_edit
     fi
     shift
 done
