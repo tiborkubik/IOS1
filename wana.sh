@@ -239,6 +239,10 @@ function hist_ip_creator () {
   }
 }
 
+function hist_load_creator () {
+  awk '{print $4}' | sort | uniq -c
+}
+
 # Getting values of filters
 while getopts "a:b:i:u:" arg; do
   ((ind_arg=$OPTIND-1))
@@ -326,8 +330,8 @@ while [ "$1" != "" ]; do
       exit 1
     fi
 
-    # Case when neither filter nor command is set
     if [ $COMMAND_FLAG -eq 0 ]; then
+      # Case when neither filter nor command is set
       if [ $FILTER_FLAG -eq 0 ]; then
         if [ ${filename: -3} == ".gz" ]; then
           zcat $filename >&1
@@ -335,10 +339,7 @@ while [ "$1" != "" ]; do
           cat $filename
         fi
       fi
-    fi
 
-    #no command is set, just filter
-    if [ $COMMAND_FLAG -eq 0 ]; then
       if [ ${filename: -3} == ".gz" ]; then
         gunzip -c $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date
       else
@@ -374,6 +375,9 @@ while [ "$1" != "" ]; do
       cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
     fi
 
+    if [  $HIST_LOAD_FLAG -eq 1 ]; then
+      cat $filename | filter_ip_addr | filter_before_date | filter_uri | filter_after_date | hist_load_creator
+    fi
     shift
 done
 
