@@ -75,15 +75,6 @@ function valid_ipv4 () {
     fi
 }
 
-function valid_ipv6 () {
-  if [[ $IPADDR =~ ^([0-9a-fA-F]{0,4}:){7}[0-9a-fA-F]{0,4}$ ]]; then
-    IFS=' '
-  else
-    echo "$0: Invalid format of IP address." >&2
-    exit 1
-  fi
-}
-
 function filter_ip_addr () {
   if [ $IPADDR_FLAG -eq 0 ]; then
     cat
@@ -96,12 +87,6 @@ function filter_ip_addr () {
   if [ $ip_length -gt 0 ]; then
     if [ $ip_length -lt 16 ]; then
       valid_ipv4
-    fi
-  fi
-
-  if [ $ip_length -gt 15 ]; then
-    if [ $ip_length -lt 100 ]; then
-      valid_ipv6
     fi
   fi
   }
@@ -191,15 +176,11 @@ function filter_uri () {
     return
   fi
 
-  edUri="^"
   edUri+=$URI
   while read -r line; do
-    echo $line | awk '{printf $7}' | {
-      read testeduri
-      if [[ $testeduri =~ $edUri ]]; then
+      if [[ $line =~ $edUri ]]; then
         echo $line
       fi
-    }
   done
 }
 
@@ -298,6 +279,7 @@ while getopts "a:b:i:u:" arg; do
                   ;;
     u)            if [ ${!ind_arg} = "-uri" ]; then
                     URI=${!OPTIND}
+                    echo $URI
                     URI_FLAG=1
                     FILTER_FLAG=1
                     ((OPTIND++))
@@ -339,7 +321,31 @@ fi
 
 # Reading from stdin when no log files are available
 if [ "$1" = "" ]; then
-  0>&1
+  input=$(cat)
+
+  if [ $COMMAND_FLAG -eq 0 ]; then
+    echo $input | filter_all
+  fi
+
+  if [ $LIST_IP_FLAG -eq 1 ]; then
+    echo $input | filter_all | awk '{print $1}' | sort | uniq
+  fi
+
+  if [ $LIST_HOSTS_FLAG -eq 1 ]; then
+    echo $input | filter_all | awk '{print $1}' | print_dom | sort | uniq
+  fi
+
+  if [ $LIST_URI_FLAG -eq 1 ]; then
+    echo $input | filter_all | awk '{print $7}' | list_uri_edit
+  fi
+
+  if [ $HIST_IP_FLAG -eq 1 ]; then
+    echo $input | filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
+  fi
+
+  if [ $HIST_LOAD_FLAG -eq 1 ]; then
+    echo $input | filter_all | hist_load_creator | sort | uniq -c | hist_edit
+  fi
 fi
 
 # Pre vsetky subory
@@ -347,71 +353,87 @@ while [ "$1" != "" ]; do
     filename=$1
 
     # Case when file does not exist
-    if [ ! -f $filename ]; then
-      usage
-    fi
+    #if [ ! -f $filename ]; then
+  #    usage
+  #  fi
 
-    if [ ! -r $filename ]; then
-      usage
-    fi
+    #if [ ! -r $filename ]; then
+  #    usage
+  #  fi
 
     if [ $COMMAND_FLAG -eq 0 ]; then
       # Case when neither filter nor command is set
-      if [ $FILTER_FLAG -eq 0 ]; then
-        if [ ${filename: -3} == ".gz" ]; then
-          zcat $filename >&1
-        else
-          cat $filename
-        fi
-      fi
-
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_all
+        gunzip -c $filename
       else
-        cat $filename | filter_all
+        cat $filename
       fi
     fi
 
     if [ $LIST_IP_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_all | awk '{print $1}'
+        gunzip -c $filename
       else
-        cat $filename | filter_all | awk '{print $1}'
+        cat $filename
       fi
     fi
 
     if [ $LIST_HOSTS_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_all | awk '{print $1}' | print_dom
+        gunzip -c $filename
       else
-        cat $filename | filter_all | awk '{print $1}' | print_dom
+        cat $filename
       fi
     fi
 
     if [ $LIST_URI_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_all | awk '{print $7}' | list_uri_edit
+        gunzip -c $filename
       else
-        cat $filename | filter_all | awk '{print $7}' | list_uri_edit
+        cat $filename
       fi
     fi
 
     if [ $HIST_IP_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
+        gunzip -c $filename
       else
-        cat $filename | filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
+        cat $filename
       fi
     fi
 
     if [  $HIST_LOAD_FLAG -eq 1 ]; then
       if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename | filter_all | filter_after_date | hist_load_creator | sort | uniq -c | hist_edit
+        gunzip -c $filename
       else
-        cat $filename | filter_all | hist_load_creator | sort | uniq -c | hist_edit
+        cat $filename
       fi
     fi
     shift
-done
+done | {
+  if [ $COMMAND_FLAG -eq 0 ]; then
+     filter_all
+  fi
+
+  if [ $LIST_IP_FLAG -eq 1 ]; then
+     filter_all | awk '{print $1}' | sort | uniq
+  fi
+
+  if [ $LIST_HOSTS_FLAG -eq 1 ]; then
+    filter_all | awk '{print $1}' | print_dom | sort | uniq
+  fi
+
+  if [ $LIST_URI_FLAG -eq 1 ]; then
+     filter_all | awk '{print $7}' | list_uri_edit | sort | uniq
+  fi
+
+  if [ $HIST_LOAD_FLAG -eq 1 ]; then
+    filter_all | hist_load_creator | sort | uniq -c | hist_edit
+  fi
+
+  if [ $HIST_IP_FLAG -eq 1 ]; then
+    filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
+  fi
+}
 
 exit 0
