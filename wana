@@ -32,7 +32,7 @@ function print_dom () {
         echo $line
       elif [ "$tested_line" = "3(NXDOMAIN)" ]; then
         echo $line
-      else echo $tested_line | sed 's/.$//'
+      else echo $tested_line
       fi
     }
     done
@@ -176,11 +176,16 @@ function filter_uri () {
     return
   fi
 
+  edUri="^"
   edUri+=$URI
   while read -r line; do
-      if [[ $line =~ $edUri ]]; then
+      echo $line | awk '{print $7}' | {
+        read testUri
+        #echo $testUri
+      if [[ $testUri =~ $edUri ]]; then
         echo $line
       fi
+    }
   done
 }
 
@@ -353,13 +358,9 @@ while [ "$1" != "" ]; do
     filename=$1
 
     # Case when file does not exist
-    #if [ ! -f $filename ]; then
-  #    usage
-  #  fi
-
-    #if [ ! -r $filename ]; then
-  #    usage
-  #  fi
+    if [ ! -f $filename ]; then
+      usage
+    fi
 
     if [ $COMMAND_FLAG -eq 0 ]; then
       # Case when neither filter nor command is set
