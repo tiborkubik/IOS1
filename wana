@@ -24,9 +24,10 @@ function usage () {
 	exit 1
 }
 
+# Function transforms ip address to domain
 function print_dom () {
   while read -r line; do
-    host $line | awk '{print $NF}' | {
+    host $line | awk '{print $NF}' | {        #using "host"
       read tested_line
       if [ "$tested_line" = "2(SERVFAIL)" ]; then
         echo $line
@@ -75,8 +76,9 @@ function valid_ipv4 () {
     fi
 }
 
+# Function filters input according to given ip address
 function filter_ip_addr () {
-  if [ $IPADDR_FLAG -eq 0 ]; then
+  if [ $IPADDR_FLAG -eq 0 ]; then #if we dont want to filter, we just print input
     cat
     return
   fi
@@ -94,13 +96,14 @@ function filter_ip_addr () {
   while read -r line; do
       echo $line | awk '{printf $1}' | {
         read testedip
-        if [ "$testedip" = "$IPADDR" ]; then
+        if [ "$testedip" = "$IPADDR" ]; then # Comparing each line with input
           echo $line
         fi
       }
   done
 }
 
+# Function checks, if given date is in valid form
 function valid_date_a () {
   if [[ $AFTER_DATE =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
     IFS=' '
@@ -110,9 +113,9 @@ function valid_date_a () {
   fi
 }
 
+# Function filters logs after given date
 function filter_after_date () {
-
-  if [ $AFTER_DATE_FLAG -eq 0 ]; then
+  if [ $AFTER_DATE_FLAG -eq 0 ]; then #if we dont want to filter, we just print input
     cat
     return
   fi
@@ -144,9 +147,9 @@ function valid_date_b () {
     exit 1
   fi
 }
-
+# Function filters logs before given date
 function filter_before_date () {
-  if [ $BEFORE_DATE_FLAG -eq 0 ]; then
+  if [ $BEFORE_DATE_FLAG -eq 0 ]; then #if we dont want to filter, we just print input
     cat
     return
   fi
@@ -170,8 +173,9 @@ function filter_before_date () {
   done
 }
 
+# Function checks each uri and filters those, which fit given regex
 function filter_uri () {
-  if [ $URI_FLAG -eq 0 ]; then
+  if [ $URI_FLAG -eq 0 ]; then #if we dont want to filter, we just print input
     cat
     return
   fi
@@ -189,6 +193,7 @@ function filter_uri () {
   done
 }
 
+#Auxilliary function in process of printing uris
 function list_uri_edit () {
   while read -r line; do
     if [[ $line =~ ^/ ]]; then
@@ -197,6 +202,7 @@ function list_uri_edit () {
   done
 }
 
+# Function creates histogram of ip addresses
 function hist_ip_creator () {
   sort -n -r | {
   while read -r line; do
@@ -209,7 +215,7 @@ function hist_ip_creator () {
 
       echo $line | awk '{print $2}' | {
         read act_ip
-        printf "%s (%d): %s\n" "$act_ip" "$nmbs" "$hash_nmb"
+        printf "%s (%d): %s\n" "$act_ip" "$nmbs" "$hash_nmb"  # Format: %s (%d): %s
       }
     }
   done
@@ -324,7 +330,7 @@ if [ $COMMAND_FLAG -eq 1 ]; then
     shift
 fi
 
-# Reading from stdin when no log files are available
+# Reading from stdin when no log files are available. Would like to re-work it, but there are so much projects :(
 if [ "$1" = "" ]; then
   input=$(cat)
 
@@ -353,7 +359,7 @@ if [ "$1" = "" ]; then
   fi
 fi
 
-# Pre vsetky subory
+# Cycles through all given files and pipes it
 while [ "$1" != "" ]; do
     filename=$1
 
@@ -411,7 +417,7 @@ while [ "$1" != "" ]; do
       fi
     fi
     shift
-done | {
+done | {  # output of all files is piped to all filters and then command is made
   if [ $COMMAND_FLAG -eq 0 ]; then
      filter_all
   fi
