@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
+
 POSIXLY_CORRECT=yes
 IFS=' '
 # Help
 HOW_TO_INFO=$(printf  "wana [FILTR] [PŘÍKAZ] [LOG [LOG2 [...]]")
 # Filters definition
-FILTER_FLAG=0
 AFTER_DATE_FLAG=0
 BEFORE_DATE_FLAG=0
 IPADDR_FLAG=0
@@ -16,30 +16,28 @@ LIST_URI_FLAG=0
 HIST_IP_FLAG=0
 HIST_LOAD_FLAG=0
 COMMAND_FLAG=0
-# Name of file where logs are stored
-filename=
 
-function usage () {
+usage () {
   echo "$0: Priklad spustenia: $HOW_TO_INFO" >&2
 	exit 1
 }
 
 # Function transforms ip address to domain
-function print_dom () {
+print_dom () {
   while read -r line; do
-    host $line | awk '{print $NF}' | {        #using "host"
-      read tested_line
+    host "$line" | awk '{print $NF}' | {        #using "host"
+      read -r tested_line
       if [ "$tested_line" = "2(SERVFAIL)" ]; then
-        echo $line
+        echo "$line"
       elif [ "$tested_line" = "3(NXDOMAIN)" ]; then
-        echo $line
-      else echo $tested_line
+        echo "$line"
+      else echo "$tested_line"
       fi
     }
     done
 }
 
-function month_edit () {
+month_edit () {
   case $month in
     Jan) MON=01 ;;
     Feb) MON=02 ;;
@@ -55,56 +53,39 @@ function month_edit () {
     Dec) MON=12 ;;
 esac
 }
-# With help from: https://www.linuxjournal.com/content/validating-ip-address-bash-script
-function valid_ipv4 () {
-    local  ip=$IPADDR
-    local  stat=1
-    #echo $ip | awk '{print length}'
-    if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        OIFS=$IFS
-        IFS='.'
-        ip=($ip)
-        IFS=$OIFS
-        [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
-            && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
-        stat=$?
-    fi
-
-    if [ $stat -eq 1 ]; then
-      echo "$0: Invalid format of IP address." >&2
-	    exit 1
+# With help from: https://helloacm.com/the-8-bit-dos-by-famicom-clone-bbgdos-in-the-1990s/
+valid_ip () {
+    if [[ $IPADDR =~ ^([0-9]{1,2}|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.([0-9]{1,2}|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.([0-9]{1,2}|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.([0-9]{1,2}|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$ ]]; then
+        ip=$IPADDR
+    elif [[ $IPADDR =~ ^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$ ]]; then
+        ip=$IPADDR
+    else
+        echo "$0: Invalid format of IP address." >&2
+        exit 1
     fi
 }
 
 # Function filters input according to given ip address
-function filter_ip_addr () {
+filter_ip_addr () {
   if [ $IPADDR_FLAG -eq 0 ]; then #if we dont want to filter, we just print input
     cat
     return
   fi
 
-  echo $IPADDR | awk '{print length}' | {
-  read ip_length
-
-  if [ $ip_length -gt 0 ]; then
-    if [ $ip_length -lt 16 ]; then
-      valid_ipv4
-    fi
-  fi
-  }
+  valid_ip
 
   while read -r line; do
-      echo $line | awk '{printf $1}' | {
-        read testedip
+      echo "$line" | awk '{printf $1}' | {
+        read -r testedip
         if [ "$testedip" = "$IPADDR" ]; then # Comparing each line with input
-          echo $line
+          echo "$line"
         fi
       }
   done
 }
 
 # Function checks, if given date is in valid form
-function valid_date_a () {
+valid_date_a () {
   if [[ $AFTER_DATE =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
     IFS=' '
   else
@@ -114,7 +95,7 @@ function valid_date_a () {
 }
 
 # Function filters logs after given date
-function filter_after_date () {
+filter_after_date () {
   if [ $AFTER_DATE_FLAG -eq 0 ]; then #if we dont want to filter, we just print input
     cat
     return
@@ -122,8 +103,8 @@ function filter_after_date () {
 
   valid_date_a
   while read -r line; do
-      echo $line | awk '{printf $4}' | {
-        read testeddate
+      echo "$line" | awk '{printf $4}' | {
+        read -r testeddate
         actualdate=${testeddate:8:4}
         month=${testeddate:4:3}
         month_edit
@@ -133,13 +114,13 @@ function filter_after_date () {
         actualdate+=${testeddate:16:2}
         actualdate+=${testeddate:19:2}
       if [ "${AFTER_DATE//[-: ]/}" \< "$actualdate" ]; then
-        echo $line
+        echo "$line"
       fi
       }
   done
 }
 
-function valid_date_b () {
+valid_date_b () {
   if [[ $BEFORE_DATE =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
     IFS=' '
   else
@@ -148,7 +129,7 @@ function valid_date_b () {
   fi
 }
 # Function filters logs before given date
-function filter_before_date () {
+filter_before_date () {
   if [ $BEFORE_DATE_FLAG -eq 0 ]; then #if we dont want to filter, we just print input
     cat
     return
@@ -156,8 +137,8 @@ function filter_before_date () {
 
   valid_date_b
   while read -r line; do
-      echo $line | awk '{printf $4}' | {
-        read testeddate
+      echo "$line" | awk '{printf $4}' | {
+        read -r testeddate
         actualdate=${testeddate:8:4}
         month=${testeddate:4:3}
         month_edit
@@ -167,14 +148,14 @@ function filter_before_date () {
         actualdate+=${testeddate:16:2}
         actualdate+=${testeddate:19:2}
       if [ "${BEFORE_DATE//[-: ]/}" \> "$actualdate" ]; then
-        echo $line
+        echo "$line"
       fi
       }
   done
 }
 
 # Function checks each uri and filters those, which fit given regex
-function filter_uri () {
+filter_uri () {
   if [ $URI_FLAG -eq 0 ]; then #if we dont want to filter, we just print input
     cat
     return
@@ -183,38 +164,38 @@ function filter_uri () {
   edUri="^"
   edUri+=$URI
   while read -r line; do
-      echo $line | awk '{print $7}' | {
-        read testUri
+      echo "$line" | awk '{print $7}' | {
+        read -r testUri
         #echo $testUri
       if [[ $testUri =~ $edUri ]]; then
-        echo $line
+        echo "$line"
       fi
     }
   done
 }
 
 #Auxilliary function in process of printing uris
-function list_uri_edit () {
+list_uri_edit () {
   while read -r line; do
     if [[ $line =~ ^/ ]]; then
-      echo $line
+      echo "$line"
     fi
   done
 }
 
 # Function creates histogram of ip addresses
-function hist_ip_creator () {
+hist_ip_creator () {
   sort -n -r | {
   while read -r line; do
-    echo $line | awk '{printf $1}' | {
-      read nmbs
+    echo "$line" | awk '{printf $1}' | {
+      read -r nmbs
       hash_nmb=
-      for (( i = 0; i < $nmbs; i++ )); do
+      for (( i = 0; i < nmbs; i++ )); do
         hash_nmb+="#"
       done
 
-      echo $line | awk '{print $2}' | {
-        read act_ip
+      echo "$line" | awk '{print $2}' | {
+        read -r act_ip
         printf "%s (%d): %s\n" "$act_ip" "$nmbs" "$hash_nmb"  # Format: %s (%d): %s
       }
     }
@@ -222,25 +203,25 @@ function hist_ip_creator () {
   }
 }
 
-function hist_load_creator () {
+hist_load_creator () {
   awk '{print $4}' | {
     while read -r line; do
-      echo ${line:1:14}
+      echo "${line:1:14}"
     done
   }
 }
 
-function hist_edit () {
+hist_edit () {
   while read -r line; do
-    echo $line | awk '{printf $1}' | {
+    echo "$line" | awk '{printf $1}' | {
 
-      read nmbs
+      read -r nmbs
       hash_nmb=
-      for (( i = 0; i < $nmbs; i++ )); do
+      for (( i = 0; i < nmbs; i++ )); do
         hash_nmb+="#"
       done
-      echo $line | awk '{print $2}' | {
-        read act_date
+      echo "$line" | awk '{print $2}' | {
+        read -r act_date
         temp_date=$act_date
         act_date=${temp_date:7:4}
         month=${temp_date:3:3}
@@ -258,31 +239,24 @@ function hist_edit () {
   done
 }
 
-function filter_all () {
+filter_all () {
   filter_ip_addr | filter_before_date | filter_uri | filter_after_date
 }
 
 # Getting values of filters
 while getopts "a:b:i:u:" arg; do
-  ((ind_arg=$OPTIND-1))
+  ((ind_arg=OPTIND-1))
 
   case $arg in
     a)              AFTER_DATE=$OPTARG
                     AFTER_DATE_FLAG=1
-                    FILTER_FLAG=1
-                    #shift
-                    #AFTER_DATE+=" ${!ind_arg}"
                   ;;
     b)              BEFORE_DATE=$OPTARG
                     BEFORE_DATE_FLAG=1
-                    FILTER_FLAG=1
-                    #shift
-                    #BEFORE_DATE+=" ${!ind_arg}"
                   ;;
     i)            if [ ${!ind_arg} = "-ip" ]; then
                     IPADDR=${!OPTIND}
                     IPADDR_FLAG=1
-                    FILTER_FLAG=1
                     ((OPTIND++))
                   else
                     usage
@@ -290,9 +264,7 @@ while getopts "a:b:i:u:" arg; do
                   ;;
     u)            if [ ${!ind_arg} = "-uri" ]; then
                     URI=${!OPTIND}
-                    echo $URI
                     URI_FLAG=1
-                    FILTER_FLAG=1
                     ((OPTIND++))
                   else
                     usage
@@ -335,27 +307,22 @@ if [ "$1" = "" ]; then
   input=$(cat)
 
   if [ $COMMAND_FLAG -eq 0 ]; then
-    echo $input | filter_all
+    echo "$input" | filter_all
   fi
-
   if [ $LIST_IP_FLAG -eq 1 ]; then
-    echo $input | filter_all | awk '{print $1}' | sort | uniq
+    echo "$input" | filter_all | awk '{print $1}' | sort | uniq
   fi
-
   if [ $LIST_HOSTS_FLAG -eq 1 ]; then
-    echo $input | filter_all | awk '{print $1}' | print_dom | sort | uniq
+    echo "$input" | filter_all | awk '{print $1}' | print_dom | sort | uniq
   fi
-
   if [ $LIST_URI_FLAG -eq 1 ]; then
-    echo $input | filter_all | awk '{print $7}' | list_uri_edit
+    echo "$input" | filter_all | awk '{print $7}' | list_uri_edit
   fi
-
   if [ $HIST_IP_FLAG -eq 1 ]; then
-    echo $input | filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
+    echo "$input" | filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
   fi
-
   if [ $HIST_LOAD_FLAG -eq 1 ]; then
-    echo $input | filter_all | hist_load_creator | sort | uniq -c | hist_edit
+    echo "$input" | filter_all | hist_load_creator | sort | uniq -c | hist_edit
   fi
 fi
 
@@ -364,56 +331,56 @@ while [ "$1" != "" ]; do
     filename=$1
 
     # Case when file does not exist
-    if [ ! -f $filename ]; then
+    if [ ! -f "$filename" ]; then
       usage
     fi
 
     if [ $COMMAND_FLAG -eq 0 ]; then
       # Case when neither filter nor command is set
-      if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename
+      if [ "${filename: -3}" == ".gz" ]; then
+        gunzip -c "$filename"
       else
-        cat $filename
+        cat "$filename"
       fi
     fi
 
     if [ $LIST_IP_FLAG -eq 1 ]; then
-      if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename
+      if [ "${filename: -3}" == ".gz" ]; then
+        gunzip -c "$filename"
       else
-        cat $filename
+        cat "$filename"
       fi
     fi
 
     if [ $LIST_HOSTS_FLAG -eq 1 ]; then
-      if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename
+      if [ "${filename: -3}" == ".gz" ]; then
+        gunzip -c "$filename"
       else
-        cat $filename
+        cat "$filename"
       fi
     fi
 
     if [ $LIST_URI_FLAG -eq 1 ]; then
-      if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename
+      if [ "${filename: -3}" == ".gz" ]; then
+        gunzip -c "$filename"
       else
-        cat $filename
+        cat "$filename"
       fi
     fi
 
     if [ $HIST_IP_FLAG -eq 1 ]; then
-      if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename
+      if [ "${filename: -3}" == ".gz" ]; then
+        gunzip -c "$filename"
       else
-        cat $filename
+        cat "$filename"
       fi
     fi
 
     if [  $HIST_LOAD_FLAG -eq 1 ]; then
-      if [ ${filename: -3} == ".gz" ]; then
-        gunzip -c $filename
+      if [ "${filename: -3}" == ".gz" ]; then
+        gunzip -c "$filename"
       else
-        cat $filename
+        cat "$filename"
       fi
     fi
     shift
@@ -421,26 +388,20 @@ done | {  # output of all files is piped to all filters and then command is made
   if [ $COMMAND_FLAG -eq 0 ]; then
      filter_all
   fi
-
   if [ $LIST_IP_FLAG -eq 1 ]; then
      filter_all | awk '{print $1}' | sort | uniq
   fi
-
   if [ $LIST_HOSTS_FLAG -eq 1 ]; then
     filter_all | awk '{print $1}' | print_dom | sort | uniq
   fi
-
   if [ $LIST_URI_FLAG -eq 1 ]; then
      filter_all | awk '{print $7}' | list_uri_edit | sort | uniq
   fi
-
   if [ $HIST_LOAD_FLAG -eq 1 ]; then
     filter_all | hist_load_creator | sort | uniq -c | hist_edit
   fi
-
   if [ $HIST_IP_FLAG -eq 1 ]; then
     filter_all | awk '{print $1}' | sort -n -r | uniq -c | hist_ip_creator
   fi
 }
-
-exit 0
+exit 0 # Success ! :)
